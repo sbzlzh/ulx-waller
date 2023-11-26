@@ -1,4 +1,4 @@
-local CATEGORY_NAME = "Utility"
+local CATEGORY_NAME = "Perspective Utility"
 
 if SERVER then
     util.AddNetworkString("SpecialEffect")
