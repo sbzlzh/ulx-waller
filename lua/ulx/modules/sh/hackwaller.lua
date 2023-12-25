@@ -1,6 +1,6 @@
 local CATEGORY_NAME = "Perspective Utility"
 
-CreateConVar("hacker_mode", 0, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Set hacker mode (0 for Halos SpecialEffect, 1 for 3D2D SpecialEffect)")
+CreateConVar("hacker_mode", 1, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Set hacker mode (0 for Halos SpecialEffect, 1 for 3D2D SpecialEffect)")
 CreateConVar("hacker_show_names", 1, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Show player names (0 for off, 1 for on)")
 hacker_mode = GetConVar("hacker_mode"):GetInt()
 hacker_show_names = GetConVar("hacker_show_names"):GetInt()
@@ -95,7 +95,6 @@ if CLIENT then
             hook.Remove("HUDPaint", "DrawPlayerNames")
             playerMap = {}
         end)
-
     elseif hackerMode == 1 then
         local playerMap = {}
 
