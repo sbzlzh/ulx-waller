@@ -1,6 +1,6 @@
 local CATEGORY_NAME = "Perspective Utility"
 
-CreateConVar("hacker_mode", 1, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Set hacker mode (0 for Halos SpecialEffect, 1 for 3D2D SpecialEffect)")
+CreateConVar("hacker_mode", 0, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Set hacker mode (0 for Halos SpecialEffect, 1 for 3D2D SpecialEffect)")
 CreateConVar("hacker_show_names", 1, { FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED }, "Show player names (0 for off, 1 for on)")
 hacker_mode = GetConVar("hacker_mode"):GetInt()
 hacker_show_names = GetConVar("hacker_show_names"):GetInt()
@@ -29,6 +29,18 @@ if SERVER then
 
     SetGlobalInt("hacker_mode", hacker_mode)
     SetGlobalInt("hacker_show_names", hacker_show_names)
+
+	hook.Add("PlayerDeath", "ClearEffectsOnDeath", function(victim, inflictor, attacker)
+        local hackerMode = GetConVar("hacker_mode"):GetInt()
+
+        if hackerMode == 0 then
+            net.Start("ClearSpecialEffects")
+            net.Send(victim)
+        elseif hackerMode == 1 then
+            net.Start("ClearEffects")
+            net.Send(victim)
+        end
+    end)
 end
 
 if CLIENT then
@@ -95,6 +107,7 @@ if CLIENT then
             hook.Remove("HUDPaint", "DrawPlayerNames")
             playerMap = {}
         end)
+
     elseif hackerMode == 1 then
         local playerMap = {}
 
@@ -187,7 +200,7 @@ if CLIENT then
     end
 end
 
-function ulx.activateNewSpecialEffect(calling_ply, target_plys)
+function ulx.activateNewSpecialEffect(calling_ply, target_plys, shouldClear)
     local GM = gmod.GetGamemode()
     local affected_plys = target_plys or {}
 
@@ -196,25 +209,51 @@ function ulx.activateNewSpecialEffect(calling_ply, target_plys)
     end
 
     local players = player.GetAll()
-
     local hackerMode = GetConVar("hacker_mode"):GetInt()
 
     for _, ply in ipairs(affected_plys) do
-        if hackerMode == 0 then
-            net.Start("SpecialEffect")
-        elseif hackerMode == 1 then
-            net.Start("SpecialEffects")
+        if shouldClear then
+            if hackerMode == 0 then
+                net.Start("ClearSpecialEffects")
+            elseif hackerMode == 1 then
+                net.Start("ClearEffects")
+            end
+        else
+            if hackerMode == 0 then
+                net.Start("SpecialEffect")
+            elseif hackerMode == 1 then
+                net.Start("SpecialEffects")
+            end
         end
 
         net.WriteTable(players)
         net.Send(ply)
     end
 
-    ulx.fancyLogAdmin(calling_ply, "#A activated test feature for #T", target_plys)
+    if shouldClear then
+        ulx.fancyLogAdmin(calling_ply, "#A cleared test function for #T", target_plys)
+    else
+        ulx.fancyLogAdmin(calling_ply, "#A activated test function for #T", target_plys)
+    end
 
-    if GetConVarString("gamemode") == "murder" then
-        hook.Add("OnStartRound", "EffectOnNewRound", function()
+    if GetConVar("gamemode"):GetString() == "murder" then
+        hook.Add("OnStartRound", "murdercleareffects", function()
             for _, ply in ipairs(affected_plys) do
+                local hackerMode = GetConVar("hacker_mode"):GetInt()
+                if hackerMode == 0 then
+                    net.Start("ClearSpecialEffects")
+                    net.Send(ply)
+                elseif hackerMode == 1 then
+                    net.Start("ClearEffects")
+                    net.Send(ply)
+                end
+            end
+        end)
+
+    elseif GetConVar("gamemode"):GetString() == "terrortown" then
+        hook.Add("TTTPrepareRound", "tttcleareffects", function()
+            for _, ply in ipairs(affected_plys) do
+                local hackerMode = GetConVar("hacker_mode"):GetInt()
                 if hackerMode == 0 then
                     net.Start("ClearSpecialEffects")
                     net.Send(ply)
@@ -227,34 +266,8 @@ function ulx.activateNewSpecialEffect(calling_ply, target_plys)
     end
 end
 
-function ulx.clearNewSpecialEffect(calling_ply, target_plys)
-    local affected_plys = target_plys or {}
-    local hackerMode = GetConVar("hacker_mode"):GetInt()
-
-    if #affected_plys == 0 then
-        table.insert(affected_plys, calling_ply)
-    end
-
-    for _, ply in ipairs(affected_plys) do
-        if hackerMode == 0 then
-            net.Start("ClearSpecialEffects")
-            net.Send(ply)
-        elseif hackerMode == 1 then
-            net.Start("ClearEffects")
-            net.Send(ply)
-        end
-    end
-
-    ulx.fancyLogAdmin(calling_ply, "#A cleared test feature for #T", target_plys)
-end
-
 local activateNewSpecialEffect = ulx.command(CATEGORY_NAME, "ulx hacker", ulx.activateNewSpecialEffect, "!hacker")
 activateNewSpecialEffect:addParam { type = ULib.cmds.PlayersArg, ULib.cmds.optional }
 activateNewSpecialEffect:defaultAccess(ULib.ACCESS_SUPERADMIN)
 activateNewSpecialEffect:help("Activate perspective feature.")
 activateNewSpecialEffect:setOpposite("ulx clearhacker", { _, _, true }, "!clearhacker")
-
-local clearNewSpecialEffect = ulx.command(CATEGORY_NAME, "ulx clearhacker", ulx.clearNewSpecialEffect, "!clearhacker")
-clearNewSpecialEffect:addParam { type = ULib.cmds.PlayersArg, ULib.cmds.optional }
-clearNewSpecialEffect:defaultAccess(ULib.ACCESS_SUPERADMIN)
-clearNewSpecialEffect:help("Clear perspective feature.")
